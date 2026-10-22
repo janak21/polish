@@ -33,6 +33,7 @@ swift test   # unit tests
 ## Notes
 
 - Selected text is sent to the Anthropic API (`claude-haiku-5-5`). Your API key is stored in the macOS Keychain.
+- When you're offline, Polish falls back to Apple's on-device model (macOS 26+ with Apple Intelligence turned on). The popup shows which model produced each result.
 - The shortcut copies the selection by sending ⌘C and restores your previous clipboard afterwards.
 - In Terminal and iTerm, Polish offers Copy only, because pasting into a shell could run the text as a command.
 - If an app doesn't report where the selection is, the popover points at the mouse instead.

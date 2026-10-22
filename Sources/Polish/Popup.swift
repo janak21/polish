@@ -5,6 +5,7 @@ import SwiftUI
 final class Session {
     let original: String
     var result: String?
+    var model: String? // which model produced `result`
     var error: String?
     var busy = false
     var tweak = ""
@@ -30,7 +31,7 @@ final class Session {
         busy = true
         error = nil
         Task {
-            do { result = try await Claude.run(instruction, on: text) } catch { self.error = error.localizedDescription }
+            do { (result, model) = try await Claude.run(instruction, on: text) } catch { self.error = error.localizedDescription }
             busy = false
         }
     }
@@ -192,7 +193,12 @@ struct PopupView: View {
                     } else if let error = session.error {
                         Text(error).foregroundStyle(.red)
                     } else if let result = session.result {
-                        Text(Diff.attributed(from: session.original, to: result))
+                        VStack(alignment: .leading, spacing: 6) {
+                            if result == session.original {
+                                Label("Looks good. No changes needed.", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                            }
+                            Text(Diff.attributed(from: session.original, to: result))
+                        }
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -206,6 +212,11 @@ struct PopupView: View {
                 .disabled(session.result == nil || session.busy)
 
             HStack {
+                if let model = session.model, session.result != nil, !session.busy {
+                    Label(model, systemImage: model.hasPrefix("Claude") ? "cloud" : "laptopcomputer")
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
                 Spacer()
                 Button("Close", action: close).keyboardShortcut(.cancelAction)
                 Group {

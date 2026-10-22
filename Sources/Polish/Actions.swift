@@ -7,7 +7,7 @@ struct Action: Codable, Identifiable, Hashable {
     var instruction: String
 
     static let builtIn: [Action] = [
-        Action(name: "Proofread", instruction: "Fix grammar, spelling, and punctuation, and rephrase anything a native English speaker would find unnatural. Keep the tone and meaning."),
+        Action(name: "Proofread", instruction: "Fix grammar, spelling, and punctuation mistakes, and rephrase only phrases a native English speaker would find unnatural. Change nothing else: no rewording for style, no synonyms. If the text is already correct and natural, return it exactly as it is."),
         Action(name: "Improve", instruction: "Make it clearer and more natural. Keep the meaning, length, and tone."),
         Action(name: "Rewrite", instruction: "Rewrite it in fresh wording. You may restructure it freely, but keep the meaning."),
         Action(name: "Casual", instruction: "Make the tone casual and friendly, like a message to a coworker."),

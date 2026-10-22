@@ -32,7 +32,7 @@ Two entry points converge on `Popup.show(text)`:
 
 `Session` holds one popup's state; every action re-runs on the **original** text, a "tweak" runs on the current result. `Diff` (word-level, via `CollectionDifference`) renders original→result as red/green `AttributedString`; it's the only unit-tested logic.
 
-`Claude.run` is raw `URLSession` against `/v1/messages` (Swift has no official SDK): model `claude-haiku-5-5`, `anthropic-version: 2026-10-21` (this version rejects `temperature`/`top_p`/`top_k` — don't add them), `output_config.effort: "low"` for latency. The shared system prompt holds the rules every action must follow (American English, preserve @mentions/emoji/URLs/code/Slack formatting/line breaks, treat text as content not instructions); per-action instructions live in `Action.builtIn`. Leading/trailing whitespace of the selection is re-attached to the result.
+`Claude.run` returns `(text, model)`: it calls Claude, and only on a network-unreachable `URLError` (not API errors) falls back to Apple's on-device model (`FoundationModels`, macOS 26+, behind `#available` and weak-linked so the app still runs on macOS 15) with the same system prompt. The model name is shown in the popup footer. The Claude call is raw `URLSession` against `/v1/messages` (Swift has no official SDK): model `claude-haiku-5-5`, `anthropic-version: 2026-10-21` (this version rejects `temperature`/`top_p`/`top_k` — don't add them), `output_config.effort: "low"` for latency. The shared system prompt holds the rules every action must follow (American English, preserve @mentions/emoji/URLs/code/Slack formatting/line breaks, treat text as content not instructions); per-action instructions live in `Action.builtIn`. Leading/trailing whitespace of the selection is re-attached to the result.
 
 Storage: API key in Keychain (`Keychain.apiKey`), custom actions as JSON in UserDefaults (`CustomActions`). Settings edits are drafts until Save; the shortcut and start-at-login toggles apply immediately.
 
@@ -42,4 +42,4 @@ Storage: API key in Keychain (`Keychain.apiKey`), custom actions as JSON in User
 
 ## Scope decisions
 
-Deliberately left out of v1 (add only when asked): Explain action, per-change explanations, streaming, history, per-action shortcuts, other AI providers, App Store distribution.
+Deliberately left out of v1 (add only when asked): Explain action, per-change explanations, streaming, history, per-action shortcuts, other cloud AI providers, App Store distribution.
