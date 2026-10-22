@@ -25,6 +25,13 @@ private func rebuild(_ parts: [Diff.Part], keepRemoved: Bool) -> String {
     #expect(Diff.parts(from: "Looks good.", to: "Looks good.") == [.same("Looks good.")])
 }
 
+@Test func changeCountPairsReplacements() {
+    #expect(Diff.changeCount(Diff.parts(from: "Looks good.", to: "Looks good.")) == 0)
+    #expect(Diff.changeCount(Diff.parts(from: "career in tech", to: "career in tech.")) == 1)
+    #expect(Diff.changeCount(Diff.parts(from: "I has it", to: "I have it")) == 1)
+    #expect(Diff.changeCount([.removed("a"), .same(" "), .added("b")]) == 2)
+}
+
 @Test func emptyInputs() {
     #expect(Diff.parts(from: "", to: "Hi") == [.added("Hi")])
     #expect(Diff.parts(from: "Hi", to: "") == [.removed("Hi")])

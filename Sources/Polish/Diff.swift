@@ -38,21 +38,32 @@ enum Diff {
         return parts
     }
 
-    static func attributed(from old: String, to new: String) -> AttributedString {
-        parts(from: old, to: new).reduce(into: AttributedString()) { out, part in
+    /// Number of edits; a removal directly followed by its replacement counts as one.
+    static func changeCount(_ parts: [Part]) -> Int {
+        parts.indices.filter { i in
+            switch parts[i] {
+            case .same: false
+            case .removed: true
+            case .added: if i > 0, case .removed = parts[i - 1] { false } else { true }
+            }
+        }.count
+    }
+
+    static func attributed(_ parts: [Part]) -> AttributedString {
+        parts.reduce(into: AttributedString()) { out, part in
             switch part {
             case .same(let s):
                 out += AttributedString(s)
             case .removed(let s):
                 var r = AttributedString(s)
                 r.foregroundColor = .red
-                r.backgroundColor = .red.opacity(0.15)
+                r.backgroundColor = .red.opacity(0.3)
                 r.strikethroughStyle = .single
                 out += r
             case .added(let s):
                 var r = AttributedString(s)
                 r.foregroundColor = .green
-                r.backgroundColor = .green.opacity(0.15)
+                r.backgroundColor = .green.opacity(0.3)
                 out += r
             }
         }

@@ -108,8 +108,19 @@ enum Popup {
     /// Removes the popover and its anchor right away; the popover's own close notification arrives later.
     private static func dismiss() {
         popover?.close()
-        anchor?.orderOut(nil)
-        anchor = nil
+        if let anchor {
+            // Fade the highlight out alongside the popover's own fade instead of vanishing ahead of it.
+            NSAnimationContext.runAnimationGroup { context in
+                context.duration = 0.15
+                context.timingFunction = CAMediaTimingFunction(controlPoints: 0.23, 1, 0.32, 1)
+                anchor.animator().alphaValue = 0
+            }
+            Task {
+                try? await Task.sleep(for: .milliseconds(150))
+                anchor.orderOut(nil)
+            }
+        }
+        anchor = nil // cleared now, not after the fade, so a popup opened meanwhile keeps its own anchor
         popover = nil
     }
 
@@ -165,6 +176,25 @@ enum Selection {
     }
 }
 
+/// Apple Intelligence–style colored glow running around the popup's edge while waiting for a result.
+private struct WaitingGlow: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    private static let colors: [Color] = [.blue, .purple, .pink, .orange, .yellow, .cyan, .blue]
+
+    var body: some View {
+        TimelineView(.animation(paused: reduceMotion)) { context in
+            let turn = context.date.timeIntervalSinceReferenceDate.truncatingRemainder(dividingBy: 3) / 3 // one lap per 3s
+            let gradient = AngularGradient(colors: Self.colors, center: .center, angle: .degrees(turn * 360))
+            let edge = RoundedRectangle(cornerRadius: 16, style: .continuous)
+            ZStack {
+                edge.strokeBorder(gradient, lineWidth: 8).blur(radius: 8)
+                edge.strokeBorder(gradient, lineWidth: 2)
+            }
+        }
+        .allowsHitTesting(false)
+    }
+}
+
 struct PopupView: View {
     static let size = NSSize(width: 480, height: 300)
 
@@ -189,16 +219,22 @@ struct PopupView: View {
             ScrollView {
                 Group {
                     if session.busy {
-                        ProgressView().frame(maxWidth: .infinity)
+                        ProgressView().frame(maxWidth: .infinity).transition(.opacity)
                     } else if let error = session.error {
-                        Text(error).foregroundStyle(.red)
+                        Text(error).foregroundStyle(.red).transition(.opacity)
                     } else if let result = session.result {
+                        let parts = Diff.parts(from: session.original, to: result)
+                        let changes = Diff.changeCount(parts)
                         VStack(alignment: .leading, spacing: 6) {
-                            if result == session.original {
+                            // Always say how many edits there are: a single added period is easy to miss in the text.
+                            if changes == 0 {
                                 Label("Looks good. No changes needed.", systemImage: "checkmark.circle.fill").foregroundStyle(.green)
+                            } else {
+                                Label("\(changes) change\(changes == 1 ? "" : "s") highlighted below", systemImage: "pencil.circle.fill").foregroundStyle(.orange)
                             }
-                            Text(Diff.attributed(from: session.original, to: result))
+                            Text(Diff.attributed(parts))
                         }
+                        .transition(.opacity)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -232,6 +268,11 @@ struct PopupView: View {
         }
         .padding(14)
         .frame(width: Self.size.width, height: Self.size.height)
+        .overlay {
+            if session.busy { WaitingGlow().transition(.opacity) }
+        }
+        // Opacity-only crossfade between spinner and result: no movement in text that's about to be read.
+        .animation(.timingCurve(0.23, 1, 0.32, 1, duration: 0.15), value: session.busy)
     }
 
     private func primary() {

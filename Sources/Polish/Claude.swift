@@ -41,7 +41,9 @@ enum Claude {
         guard #available(macOS 26, *) else { throw Failure("You're offline, and the on-device model needs macOS 26 or later.") }
         switch SystemLanguageModel.default.availability {
         case .available:
-            return try await LanguageModelSession(instructions: system).respond(to: prompt).content
+            let edited = try await LanguageModelSession(instructions: system).respond(to: prompt).content
+            await Stats.shared.recordOnDevice()
+            return edited
         case .unavailable(.appleIntelligenceNotEnabled):
             throw Failure("You're offline. Turn on Apple Intelligence in System Settings to use the on-device model.")
         case .unavailable(.modelNotReady):
@@ -74,6 +76,8 @@ enum Claude {
             let message = (json["error"] as? [String: Any])?["message"] as? String
             throw Failure("Claude API error: \(message ?? "unknown")")
         }
+        let usage = json["usage"] as? [String: Any] // billed even when Claude refuses, so count it first
+        await Stats.shared.recordClaude(inputTokens: usage?["input_tokens"] as? Int ?? 0, outputTokens: usage?["output_tokens"] as? Int ?? 0)
         if json["stop_reason"] as? String == "refusal" { throw Failure("Claude declined to edit this text.") }
 
         let blocks = json["content"] as? [[String: Any]] ?? []

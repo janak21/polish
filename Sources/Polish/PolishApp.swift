@@ -13,6 +13,7 @@ struct PolishApp: App {
     var body: some Scene {
         MenuBarExtra {
             SettingsButton()
+            StatsMenu()
             Divider()
             Button("Quit Polish") { NSApp.terminate(nil) }.keyboardShortcut("q")
         } label: {
@@ -38,6 +39,23 @@ private struct SettingsButton: View {
             openSettings()
         }
         .keyboardShortcut(",")
+    }
+}
+
+private struct StatsMenu: View {
+    private let stats = Stats.shared
+
+    var body: some View {
+        let totals = stats.totals
+        // No-op buttons, not Text: macOS greys out plain text in menus as disabled items.
+        Menu("Stats") {
+            Button("Claude Haiku: \(totals.claude.requests) requests, \((totals.claude.inputTokens + totals.claude.outputTokens).formatted()) tokens") {}
+            Button("Estimated cost: \(totals.claude.cost.formatted(.currency(code: "USD").precision(.fractionLength(4))))") {}
+            Button("On-device: \(totals.onDevice.requests) requests (free)") {}
+            Divider()
+            Button("Since \(totals.since.formatted(date: .abbreviated, time: .omitted))") {}
+            Button("Reset Stats") { stats.reset() }
+        }
     }
 }
 
