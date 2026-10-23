@@ -36,9 +36,11 @@ Two entry points converge on `Popup.show(text)`:
 
 Storage: API key in Keychain (`Keychain.apiKey`, cached in memory after the first read: a read costs ~15 ms per request), custom actions as JSON in UserDefaults (`CustomActions`), usage totals for the menu bar Stats submenu as JSON in UserDefaults (`Stats`; recorded inside `Claude.claude`/`onDevice`, cost is an estimate from hard-coded Haiku list prices — update them if the model changes). Settings edits are drafts until Save; the shortcut and start-at-login toggles apply immediately.
 
-## Menu bar icon
+## Icons
 
 `Resources/MenuBarIcon{,@2x}.png` (18/36 px, black + alpha) are template images; `build.sh` copies them into the bundle. Source art is `art/menubar-icon-source.png` — it has a *painted* checkerboard, not real transparency, so regenerating means converting luminance to alpha and cropping, not just resizing.
+
+The app icon (`Resources/AppIcon.icns`, `CFBundleIconFile` in `Info.plist`, copied by `build.sh`) is generated from the same source art: `python3 art/make-app-icon.py` (white glyph on a blue→purple rounded square). Commit the regenerated `.icns`.
 
 ## Scope decisions
 

@@ -13,7 +13,7 @@ mkdir -p "$APP/Contents/MacOS" "$APP/Contents/Resources"
 cp "$BIN/Polish" "$APP/Contents/MacOS/"
 cp Info.plist "$APP/Contents/"
 cp -R "$BIN"/*.bundle "$APP/Contents/Resources/" 2>/dev/null || true
-cp Resources/*.png "$APP/Contents/Resources/"
+cp Resources/*.png Resources/AppIcon.icns "$APP/Contents/Resources/"
 
 # A real signature keeps the Accessibility permission across rebuilds. Without a developer
 # certificate we sign ad-hoc, and Accessibility must be re-granted after each build.
