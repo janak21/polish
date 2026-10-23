@@ -1,5 +1,6 @@
 import Foundation
 import FoundationModels
+import Synchronization
 
 struct Failure: LocalizedError {
     let errorDescription: String?
@@ -89,16 +90,22 @@ enum Keychain {
     private static var query: [String: Any] {
         [kSecClass as String: kSecClassGenericPassword, kSecAttrService as String: "Polish", kSecAttrAccount as String: "anthropic-api-key"]
     }
+    /// A Keychain read takes ~15 ms and sits right before every request, so keep the key once found.
+    private static let cached = Mutex<String?>(nil)
 
     static var apiKey: String? {
         get {
+            if let key = cached.withLock({ $0 }) { return key }
             var query = query
             query[kSecReturnData as String] = true
             var item: CFTypeRef?
             guard SecItemCopyMatching(query as CFDictionary, &item) == errSecSuccess, let data = item as? Data else { return nil }
-            return String(data: data, encoding: .utf8)
+            let key = String(data: data, encoding: .utf8)
+            cached.withLock { $0 = key }
+            return key
         }
         set {
+            cached.withLock { $0 = nil }
             SecItemDelete(query as CFDictionary)
             guard let newValue, !newValue.isEmpty else { return }
             var query = query

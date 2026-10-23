@@ -6,6 +6,8 @@ final class Session {
     let original: String
     var result: String?
     var model: String? // which model produced `result`
+    var diff: AttributedString? // original → `result`, computed once per result rather than on every redraw
+    var changes = 0
     var error: String?
     var busy = false
     var tweak = ""
@@ -30,8 +32,16 @@ final class Session {
     private func run(_ instruction: String, on text: String) {
         busy = true
         error = nil
+        let original = original
+        // Detached so the request goes out now, not after the main actor finishes building and laying out the popup,
+        // and so diffing a long result doesn't stall the main thread.
+        let request = Task.detached {
+            let (result, model) = try await Claude.run(instruction, on: text)
+            let parts = Diff.parts(from: original, to: result)
+            return (result, model, Diff.attributed(parts), Diff.changeCount(parts))
+        }
         Task {
-            do { (result, model) = try await Claude.run(instruction, on: text) } catch { self.error = error.localizedDescription }
+            do { (result, model, diff, changes) = try await request.value } catch { self.error = error.localizedDescription }
             busy = false
         }
     }
@@ -59,6 +69,7 @@ enum Popup {
     }
 
     static func show(_ text: String?) {
+        let session = Session(original: text ?? "") // first, so the request runs while the old popup closes and the new one is set up
         dismiss()
         let frontmost = NSWorkspace.shared.frontmostApplication
         target = frontmost == NSRunningApplication.current ? lastOtherApp : frontmost
@@ -66,7 +77,7 @@ enum Popup {
         let selection = target.flatMap(Selection.bounds)
 
         let view = PopupView(
-            session: Session(original: text ?? ""),
+            session: session,
             actions: Action.builtIn + CustomActions.shared.usable,
             canReplace: canReplace,
             close: { close() },
@@ -222,9 +233,8 @@ struct PopupView: View {
                         ProgressView().frame(maxWidth: .infinity).transition(.opacity)
                     } else if let error = session.error {
                         Text(error).foregroundStyle(.red).transition(.opacity)
-                    } else if let result = session.result {
-                        let parts = Diff.parts(from: session.original, to: result)
-                        let changes = Diff.changeCount(parts)
+                    } else if let diff = session.diff {
+                        let changes = session.changes
                         VStack(alignment: .leading, spacing: 6) {
                             // Always say how many edits there are: a single added period is easy to miss in the text.
                             if changes == 0 {
@@ -232,7 +242,7 @@ struct PopupView: View {
                             } else {
                                 Label("\(changes) change\(changes == 1 ? "" : "s") highlighted below", systemImage: "pencil.circle.fill").foregroundStyle(.orange)
                             }
-                            Text(Diff.attributed(parts))
+                            Text(diff)
                         }
                         .transition(.opacity)
                     }
